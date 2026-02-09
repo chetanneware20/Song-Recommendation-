@@ -1,9 +1,10 @@
 import streamlit as st
 import pandas as pd
+import os
 from sklearn.preprocessing import StandardScaler
 from sklearn.metrics.pairwise import cosine_similarity
 
-# Page config
+# ---------------- PAGE CONFIG ----------------
 st.set_page_config(
     page_title="Arun Date Song Recommendation",
     page_icon="🎵",
@@ -13,19 +14,20 @@ st.set_page_config(
 st.title("🎵 Arun Date Song Recommendation System")
 st.write("Content-based recommendation using audio features")
 
-# Load dataset
+# ---------------- LOAD DATA ----------------
 @st.cache_data
 def load_data():
-    df = pd.read_csv("arundate_songs.csv")  
-    return df
+    base_dir = os.path.dirname(os.path.abspath(__file__))
+    file_path = os.path.join(base_dir, "arundate_songs.csv")
+    return pd.read_csv(file_path)
 
 df = load_data()
 
-# Display dataset
+# ---------------- SHOW DATASET ----------------
 if st.checkbox("Show Dataset"):
     st.dataframe(df)
 
-# Features for recommendation
+# ---------------- FEATURES ----------------
 features = [
     "Danceability",
     "Energy",
@@ -38,40 +40,44 @@ features = [
     "Tempo"
 ]
 
-# Scale features
-scaler = StandardScaler()
-scaled_features = scaler.fit_transform(df[features])
+# ---------------- SCALE + SIMILARITY ----------------
+@st.cache_data
+def compute_similarity(data):
+    scaler = StandardScaler()
+    scaled_features = scaler.fit_transform(data[features])
+    similarity = cosine_similarity(scaled_features)
+    return similarity
 
-# Cosine similarity
-similarity = cosine_similarity(scaled_features)
+similarity = compute_similarity(df)
 
-# Song selection
+# ---------------- SONG SELECTION ----------------
 selected_song = st.selectbox(
     "🎶 Select a Song",
-    df["Track Name"].values
+    sorted(df["Track Name"].dropna().unique())
 )
 
-# Recommendation function
-def recommend(song_name):
+# ---------------- RECOMMEND FUNCTION ----------------
+def recommend(song_name, n=5):
+    if song_name not in df["Track Name"].values:
+        return []
+
     index = df[df["Track Name"] == song_name].index[0]
-    distances = similarity[index]
-    song_list = sorted(
-        list(enumerate(distances)),
-        reverse=True,
-        key=lambda x: x[1]
-    )[1:6]
+    scores = list(enumerate(similarity[index]))
+    scores = sorted(scores, key=lambda x: x[1], reverse=True)[1:n+1]
 
-    recommendations = []
-    for i in song_list:
-        recommendations.append(df.iloc[i[0]]["Track Name"])
-    return recommendations
+    return [df.iloc[i[0]]["Track Name"] for i in scores]
 
-# Button
+# ---------------- BUTTON ----------------
 if st.button("Recommend Songs"):
     st.subheader("🎧 Recommended Songs")
-    for song in recommend(selected_song):
-        st.write("👉", song)
+    recommendations = recommend(selected_song)
 
-# Footer
+    if recommendations:
+        for song in recommendations:
+            st.write("👉", song)
+    else:
+        st.warning("No recommendations found.")
+
+# ---------------- FOOTER ----------------
 st.markdown("---")
 st.caption("Built with ❤️ using Streamlit & Machine Learning")
