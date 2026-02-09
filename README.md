@@ -8,7 +8,7 @@ The system recommends similar songs based on audio features such as energy, danc
 ---
 
 ## 🚀 Live Demo
-👉 *(Add Streamlit Cloud link here after deployment)*
+👉 (https://46tezm28htcyqhuysrq9xk.streamlit.app/)
 
 ---
 
